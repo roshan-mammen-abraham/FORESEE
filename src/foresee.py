@@ -623,14 +623,24 @@ class Foresee(Utility):
         mass = m3
 
         #integration boundary
-        emin, emax = m3, (m0**2+m3**2-(m1+m2)**2)/(2*m0)
-
+        emin, emax, ne = m3, (m0**2+m3**2-(m1+m2)**2)/(2*m0), 300
+        de = (emax-emin)/float(ne)
+        
+        # get energies (E), PDF (dBR/dE) and CDF (BR) as array
+        evals = np.linspace(emin, emax, ne+1)
+        br_sum, brvals = 0, [0]
+        for energy in (evals[:-1] + evals[1:])/2.:
+            br_sum += eval(br)*de
+            brvals.append(br_sum)
+                    
         #numerical integration
-        integral=0
+        brval = br_sum / float(nsample)
         for i in range(nsample):
 
             #sample energy
-            energy = random.uniform(emin,emax)
+            ibr, br_rand = 0, random.uniform(0,br_sum)
+            while (brvals[ibr] < br_rand): ibr+=1
+            energy = brvals[ibr]
 
             # get LLP momentum
             costh = random.uniform(-1,1)
@@ -638,10 +648,6 @@ class Foresee(Utility):
             phi = random.uniform(-math.pi,math.pi)
             p = np.sqrt(energy**2-mass**2)
             p_3 = LorentzVector(p*sinth*np.cos(phi),p*sinth*np.sin(phi),p*costh,energy)
-
-            #branching fraction
-            brval  = eval(br)
-            brval *= (emax-emin)/float(nsample)
 
             #save
             particles.append(p_3)
