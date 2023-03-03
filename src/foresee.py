@@ -640,7 +640,7 @@ class Foresee(Utility):
             #sample energy
             ibr, br_rand = 0, random.uniform(0,br_sum)
             while (brvals[ibr] < br_rand): ibr+=1
-            energy = brvals[ibr]
+            energy = evals[ibr]
 
             # get LLP momentum
             costh = random.uniform(-1,1)
