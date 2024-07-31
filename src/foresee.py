@@ -2708,3 +2708,114 @@ class Foresee(Utility, Decay):
 
         # return
         return plt
+
+
+    def plot_production_and_branching(self,
+        masses, productions, condition="True", energy="14",
+        xlims=[0.01,1],ylims=[10**-6,10**-3],
+        xlabel=r"Mass [GeV]", ylabel=r"\sigma/\epsilon^2$ [pb]",
+        figsize=(7,5), fs_label=14, title=None, legendloc=None, dolegend=True, doLogo=True, logoloc=None, textloc=None, branchings=None, ncol=1,
+    ):
+
+        # initiate figure
+        matplotlib.rcParams.update({'font.size': 15})
+        
+        if branchings is None:
+            fig, ax = plt.subplots(figsize=figsize)
+        else:
+            fig = plt.figure(figsize=figsize)
+            spec = gridspec.GridSpec(nrows=2,ncols=1,width_ratios=[1],height_ratios=[1,0.5],wspace=0,hspace=0)
+            ax = fig.add_subplot(spec[0])
+        zorder=-100
+        
+        # loop over production channels
+        dirname = self.model.modelpath+"model/LLP_spectra/"
+        for production in productions:
+            
+            # get arguments
+            channels = production['channels']
+            if 'massrange' in production.keys(): massrange = production['massrange']
+            else: massrange=xlims
+            if 'color' in production.keys(): color = production['color']
+            else: color=None
+            if 'ls' in production.keys(): ls = production['ls']
+            else: ls=None
+            if 'label' in production.keys(): label = production['label']
+            else: label=None
+            if 'generators' in production.keys(): generators = production['generators']
+            else: generators=None
+            
+            # fix format
+            if isinstance(generators, (list, tuple, np.ndarray))== False: channels=[generators]
+            if isinstance(channels, (list, tuple, np.ndarray))== False: channels=[channels]
+                        
+            # loop over generators
+            xvals, yvals = [], [[] for _ in generators]
+            for igen, generator in enumerate(generators):
+                # loop over masses
+                for mass in masses:
+                    if mass<massrange[0]: continue
+                    if mass>massrange[1]: continue
+                    # loop over channels
+                    total = 0
+                    for channel in channels:
+                        filename = dirname+energy+"TeV_"+channel+"_"+generator+"_m_"+str(mass)+".npy"
+                        try:
+                            data = np.load(filename)
+                            for logth, logp, w in data.T:
+                                if eval(condition): total+=w
+                        except:
+                            continue
+                    if igen==0: xvals.append(mass)
+                    yvals[igen].append(total+1e-10)
+                
+            # add to plot
+            yvals = np.array(yvals)
+            yvals_min = [min(row) for row in yvals.T]
+            yvals_max = [max(row) for row in yvals.T]
+            ax.plot(xvals, yvals[0], color=color, label=label, ls=ls)
+            ax.fill_between(xvals, yvals_min, yvals_max, color=color, alpha=0.2)
+
+        # finalize
+        ax.set_title(title)
+        ax.set_xscale("log")
+        ax.set_yscale("log")
+        ax.set_xlim(xlims[0],xlims[1])
+        ax.set_ylim(ylims[0],ylims[1])
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel(ylabel)
+        
+        if dolegend: ax.legend(loc="upper right", bbox_to_anchor=legendloc, frameon=False,
+            labelspacing=0, fontsize=fs_label, ncol=ncol)
+        
+        #add logo
+        if doLogo:
+#            im = plt.imread('/Users/abraham/Documents/GitHub/FASERLogo.png') # insert local path of the image.
+            im = plt.imread('/Users/abraham/Documents/GitHub/faser_new_logo.png') # insert local path of the image.
+            newax = fig.add_axes(logoloc, anchor='NE', zorder=1)
+#            newax.imshow(X=im,interpolation='none', cmap='gray',alpha=1-np.array(im))
+            newax.imshow(X=im,interpolation='none', cmap='gray')
+            newax.axis('off')
+#            ax.text(textloc[0],textloc[1],"Simulation", fontsize=14 , fontweight='bold')
+        
+        if branchings is not None:
+            ax.tick_params(axis="x",direction="in", pad=-15)
+            ax.set_xticklabels([])
+            ax2 = fig.add_subplot(spec[1])
+            for channel, color, ls, label, posx, posy in branchings:
+                masses = np.logspace(np.log10(xlims[0]),np.log10(xlims[1]),1000)
+                brvals = [self.model.get_br(channel, mass, 1) for mass in masses]
+                ax2.plot(masses, brvals, color=color, ls=ls)
+                ax2.text(posx, posy, label, fontsize=fs_label, color=color)
+            
+            ax2.set_xscale("log")
+            ax2.set_yscale("log")
+            ax2.set_xlim(xlims[0],xlims[1])
+            ax2.set_ylim(0.01, 1.5)
+            ax2.set_xlabel(xlabel)
+            ax2.set_ylabel("BR")
+            return plt, ax, ax2
+
+
+        # return
+        return plt
